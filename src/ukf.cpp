@@ -237,43 +237,32 @@ void UKF::Prediction(double delta_t) {
   }
 
 
-  // Predict mean and covariance
-  // create vector for weights
-  Eigen::VectorXd weights = Eigen::VectorXd(2*n_aug_+1);
-   // create vector for predicted state
-  Eigen::VectorXd x = Eigen::VectorXd(n_x_);
-
-  // create covariance matrix for prediction
-  Eigen::MatrixXd P = Eigen::MatrixXd(n_x_, n_x_);
 
   double weight_0 = lambda_/(lambda_ + n_aug_);
-  weights(0) = weight_0;
+  weights_(0) = weight_0;
   for (int i=1; i<2*n_aug_+1; ++i) {  // 2n+1 weights
     double weight = 0.5/(n_aug_ + lambda_);
-    weights(i) = weight;
+    weights_(i) = weight;
   }
 
   // predicted state mean
-  x.fill(0.0);
+  x_.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; ++i) {  // iterate over sigma points
-    x = x + weights(i) * Xsig_pred.col(i);
+    x_ = x_ + weights_(i) * Xsig_pred.col(i);
   }
 
   // predicted state covariance matrix
-  P.fill(0.0);
+  P_.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; ++i) {  // iterate over sigma points
     // state difference
-    Eigen::VectorXd x_diff = Xsig_pred.col(i) - x;
+    Eigen::VectorXd x_diff = Xsig_pred.col(i) - x_;
     // angle normalization
     while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
     while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
 
-    P = P + weights(i) * x_diff * x_diff.transpose() ;
+    P_ = P_ + weights_(i) * x_diff * x_diff.transpose() ;
   }
   
-  x_ = x;
-  P_ = P;
-
   std::cout << " Prediction completed   " << std::endl;
   
 
@@ -321,20 +310,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   std::cout << " In Update Radar" << std::endl;
   int n_z = 3;
 
-  // define spreading parameter
-  double lambda = 3 - n_aug_;
-
-  // set vector for weights
-  VectorXd weights = VectorXd(2*n_aug_+1);
-  double weight_0 = lambda/(lambda+n_aug_);
-  double weight = 0.5/(lambda+n_aug_);
-  weights(0) = weight_0;
-
-  for (int i=1; i<2*n_aug_+1; ++i) {  
-    weights(i) = weight;
-  }
-
-  
 
 
 // create matrix for sigma points in measurement space
@@ -345,7 +320,11 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   
   // measurement covariance matrix S
   Eigen::MatrixXd S = MatrixXd(n_z,n_z);
-  Eigen::VectorXd z = meas_package.raw_measurements_;
+  Eigen::VectorXd z = Eigen::VectorXd(n_z);
+
+  z << meas_package.raw_measurements_(0), 
+      meas_package.raw_measurements_(1),
+      meas_package.raw_measurements_(2);
  
   // transform sigma points into measurement space
   for (int i = 0; i < 2 * n_aug_ + 1; ++i) {  // 2n+1 simga points
@@ -370,7 +349,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   // mean predicted measurement
   z_pred.fill(0.0);
   for (int i=0; i < 2*n_aug_+1; ++i) {
-    z_pred = z_pred + weights(i) * Zsig.col(i);
+    z_pred = z_pred + weights_(i) * Zsig.col(i);
   }
 
   // innovation covariance matrix S
@@ -384,7 +363,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
 
   
-    S = S + weights(i) * z_diff * z_diff.transpose();
+    S = S + weights_(i) * z_diff * z_diff.transpose();
   }
 
   // add measurement noise covariance matrix
@@ -396,6 +375,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
   
  Eigen::MatrixXd Tc = Eigen::MatrixXd(n_x_, n_z);
+ Tc.fill(0.0);
  for (int i = 0; i < 2 * n_aug_ + 1; ++i) {  // 2n+1 simga points
     // residual
     Eigen::VectorXd z_diff = Zsig.col(i) - z_pred;
@@ -410,7 +390,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
     while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
 
-    Tc = Tc + weights(i) * x_diff * z_diff.transpose();
+    Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
     
   }
 

@@ -3,6 +3,7 @@
 #include <vector>
 #include "Eigen/Dense"
 #include "render/render.h"
+#include <random>
 #include <pcl/io/pcd_io.h>
 
 using Eigen::MatrixXd;
